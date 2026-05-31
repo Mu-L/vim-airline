@@ -21,6 +21,31 @@ function! airline#util#has_vim9_script()
     \ get(g:, "airline_experimental", 0))
 endfunction
 
+if v:version >= 704
+  function! airline#util#exec_funcrefs(list, ...)
+    for Fn in a:list
+      let code = call(Fn, a:000)
+      if code != 0
+        return code
+      endif
+    endfor
+    return 0
+  endfunction
+else
+  function! airline#util#exec_funcrefs(list, ...)
+    " for 7.2; we cannot iterate the list, hence why we use range()
+    " for 7.3-[97, 328]; we cannot reuse the variable, hence the {}
+    for i in range(0, len(a:list) - 1)
+      let Fn{i} = a:list[i]
+      let code = call(Fn{i}, a:000)
+      if code != 0
+        return code
+      endif
+    endfor
+    return 0
+  endfunction
+endif
+
 if !exists(":def") || !airline#util#has_vim9_script()
   " TODO: Try to cache winwidth(0) function
   " e.g. store winwidth per window and access that, only update it, if the size
@@ -100,30 +125,6 @@ if !exists(":def") || !airline#util#has_vim9_script()
     endfunction
   endif
 
-  if v:version >= 704
-    function! airline#util#exec_funcrefs(list, ...)
-      for Fn in a:list
-        let code = call(Fn, a:000)
-        if code != 0
-          return code
-        endif
-      endfor
-      return 0
-    endfunction
-  else
-    function! airline#util#exec_funcrefs(list, ...)
-      " for 7.2; we cannot iterate the list, hence why we use range()
-      " for 7.3-[97, 328]; we cannot reuse the variable, hence the {}
-      for i in range(0, len(a:list) - 1)
-        let Fn{i} = a:list[i]
-        let code = call(Fn{i}, a:000)
-        if code != 0
-          return code
-        endif
-      endfor
-      return 0
-    endfunction
-  endif
 
   " Compatibility wrapper for strchars, in case this vim version does not
   " have it natively
@@ -257,6 +258,9 @@ if !exists(":def") || !airline#util#has_vim9_script()
       \ get(g:, "airline_multiline", 0))
   endfunction
 
+  " End legacy Vim Script
+  finish
+
 else
 
   def airline#util#winwidth(...args: list<any>): number
@@ -318,16 +322,6 @@ else
 
   def airline#util#getwinvar(winnr: number, key: string, def: any): any
     return getwinvar(winnr, key, def)
-  enddef
-
-  def airline#util#exec_funcrefs(list: list<any>, ...args: list<any>): number
-    for Fn in list
-      var code = call(Fn, args)
-      if code != 0
-        return code
-      endif
-    endfor
-    return 0
   enddef
 
   def airline#util#strchars(str: string): number
